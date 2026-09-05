@@ -31,7 +31,7 @@
              bg-gradient-to-b from-sky-100 via-blue-50 to-slate-100
              dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
 
-    {{-- Mountain silhouette — fixed at bottom so it stays while scrolling --}}
+    {{-- Mountain silhouette fixed at bottom --}}
     <div class="fixed bottom-0 left-0 right-0 z-0 pointer-events-none select-none">
         <svg viewBox="0 0 1440 150" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"
              class="w-full text-blue-900 dark:text-slate-700">
@@ -44,7 +44,7 @@
         </svg>
     </div>
 
-    {{-- Floating theme toggle — top-right corner --}}
+    {{-- Floating theme toggle --}}
     <button @click="$store.theme.toggle()"
             class="fixed top-4 right-4 z-50 w-9 h-9 rounded-xl
                    bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm
@@ -57,44 +57,20 @@
         <i class="fa fa-moon text-sm" x-show="!$store.theme.dark"></i>
     </button>
 
+    {{-- Page content — no hero, brand is inside each card's left panel --}}
     <div class="relative z-10">
-
-        {{-- Brand hero — identical look to reference site --}}
-        <div class="text-center pt-12 pb-8 px-4">
-            <div class="w-16 h-16 mx-auto mb-5 rounded-2xl bg-blue-600 dark:bg-blue-700
-                        flex items-center justify-center
-                        shadow-lg shadow-blue-300/60 dark:shadow-blue-900/60">
-                <svg class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C10.5 4.5 5 11 5 15a7 7 0 0 0 14 0c0-4-5.5-10.5-7-13z"/>
-                </svg>
-            </div>
-
-            <h1 class="text-2xl sm:text-3xl font-black tracking-tight mb-3
-                       text-blue-950 dark:text-white">
-                PERUMDAM <span class="font-light">Tirta Perwira</span>
-            </h1>
-
-            <span class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium
-                         bg-white/80 dark:bg-slate-800/70 backdrop-blur-sm
-                         border border-blue-200/80 dark:border-slate-700
-                         text-blue-700 dark:text-blue-300 shadow-sm">
-                @yield('page-badge', '<i class="fa fa-headset text-xs"></i> Layanan Pengaduan Pelanggan')
-            </span>
-        </div>
-
-        <main class="max-w-2xl mx-auto px-4 pb-48">
+        <main class="max-w-6xl mx-auto w-full px-2 sm:px-4 py-6 pb-10">
             @yield('content')
         </main>
 
-        <footer class="text-center text-xs text-slate-400/80 dark:text-slate-600 pb-8 px-4">
+        <footer class="text-center text-xs text-slate-400/80 dark:text-slate-600 py-4 px-4">
             &copy; {{ date('Y') }} Perumdam Tirta Perwira &mdash; Kabupaten Purbalingga
         </footer>
-
     </div>
 
     {{-- Toast --}}
     <div id="toastContainer"
-         class="fixed top-4 right-14 z-50 flex flex-col gap-2 w-64 sm:w-72 pointer-events-none">
+         class="fixed top-4 right-4 z-50 flex flex-col gap-2 w-64 sm:w-72 pointer-events-none">
     </div>
 
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.5/dist/cdn.min.js"></script>
