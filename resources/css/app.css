@@ -1,0 +1,140 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+/* Class-based dark mode */
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+    --font-sans: 'Inter', 'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+/* ─── Base ─────────────────────────────────────────────────────────────── */
+
+*, *::before, *::after {
+    transition-property: background-color, border-color, color;
+    transition-duration: 200ms;
+    transition-timing-function: ease;
+}
+
+input, select, textarea, button { transition-duration: 150ms; }
+
+::-webkit-scrollbar          { width: 6px; height: 6px; }
+::-webkit-scrollbar-track    { background: transparent; }
+::-webkit-scrollbar-thumb    { background: #cbd5e1; border-radius: 3px; }
+.dark ::-webkit-scrollbar-thumb { background: #475569; }
+
+[x-cloak] { display: none !important; }
+
+/* ─── Component Classes ────────────────────────────────────────────────── */
+/*
+ * Centralised design tokens — edit here, not in each blade template.
+ * Classes are grouped by purpose so they're easy to find and adjust.
+ */
+
+@layer components {
+
+    /* == Form == */
+
+    .field-label {
+        @apply block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5;
+    }
+
+    /* Base input style shared by <input>, <select>, <textarea> */
+    .field-input {
+        @apply w-full rounded-lg border border-slate-200 dark:border-slate-600
+               px-3 py-2.5 text-sm
+               bg-white dark:bg-slate-700
+               text-slate-800 dark:text-slate-100
+               placeholder-slate-400 dark:placeholder-slate-500
+               focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+               outline-none transition;
+    }
+
+    /* Appended when the field has a validation error */
+    .field-input-error {
+        @apply border-red-400 dark:border-red-500;
+    }
+
+    .field-error {
+        @apply mt-1 text-xs text-red-500;
+    }
+
+    /* Small descriptive hint line above/below a section */
+    .field-hint {
+        @apply text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5 mb-5;
+    }
+
+
+    /* == Buttons == */
+
+    /* Solid primary — use with flex-1 or w-full for sizing */
+    .btn-primary {
+        @apply inline-flex items-center justify-center gap-2
+               bg-blue-600 hover:bg-blue-700
+               disabled:opacity-60 disabled:cursor-not-allowed
+               text-white font-semibold text-sm
+               px-5 py-2.5 rounded-lg transition;
+    }
+
+    /* Ghost/outline secondary */
+    .btn-outline {
+        @apply inline-flex items-center justify-center gap-2
+               border border-slate-200 dark:border-slate-600
+               text-slate-600 dark:text-slate-300 font-medium text-sm
+               px-4 py-2.5 rounded-lg
+               hover:bg-slate-50 dark:hover:bg-slate-700 transition;
+    }
+
+    /* Small icon-only button for use on coloured backgrounds (e.g. card header) */
+    .btn-glass {
+        @apply w-8 h-8 rounded-lg flex items-center justify-center
+               bg-white/20 hover:bg-white/30 text-white transition-colors;
+    }
+
+
+    /* == Spinner == */
+
+    .spinner {
+        @apply animate-spin h-4 w-4 shrink-0;
+    }
+
+
+    /* == Card == */
+
+    .app-card {
+        @apply bg-white dark:bg-slate-800 rounded-2xl overflow-hidden
+               shadow-xl border border-slate-100 dark:border-slate-700;
+    }
+
+    /* Standard inner padding for card sections */
+    .card-body {
+        @apply px-5 py-5 sm:px-6;
+    }
+
+
+    /* == Tabs == */
+
+    /* Shared base for every tab button; active/inactive state set via :class binding */
+    .tab-btn {
+        @apply flex-1 flex items-center justify-center gap-2
+               px-4 py-3.5 text-sm transition-all focus:outline-none;
+    }
+
+
+    /* == Alerts == */
+
+    .alert-error {
+        @apply bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700
+               rounded-xl p-4 flex gap-3 text-sm text-red-700 dark:text-red-300;
+    }
+
+    .alert-warning {
+        @apply bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700
+               rounded-lg px-4 py-3 flex items-center gap-2
+               text-sm text-amber-700 dark:text-amber-300;
+    }
+
+}
