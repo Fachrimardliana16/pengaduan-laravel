@@ -37,8 +37,8 @@
         {{-- ══════════════════════════════════════════════════════════════════ --}}
         {{-- LEFT PANEL — Brand + Info                                         --}}
         {{-- ══════════════════════════════════════════════════════════════════ --}}
-        <div class="sm:w-[42%] bg-blue-900 dark:bg-slate-950 text-white
-                    flex flex-col gap-6 p-7 sm:p-8">
+        <div class="hidden sm:flex sm:w-[42%] bg-blue-900 dark:bg-slate-950 text-white
+                    flex-col gap-6 p-7 sm:p-8">
 
             {{-- Logo + Brand --}}
             <div class="flex items-center gap-3">
@@ -363,93 +363,211 @@
                          loading: false,
                          result: null,
                          error: '',
+                         searched: false,
+
                          async cari() {
                              if (!this.noPengaduan.trim()) return;
-                             this.loading = true; this.result = null; this.error = '';
+                             this.loading = true;
+                             this.result  = null;
+                             this.error   = '';
                              try {
                                  const res  = await fetch('{{ route('api.cek') }}?NoPengaduan=' + encodeURIComponent(this.noPengaduan));
                                  const json = await res.json();
-                                 if (!res.ok)                            this.error = json.error ?? 'Terjadi kesalahan.';
-                                 else if (json.data?.length > 0)         this.result = json.data;
-                                 else                                    this.error  = 'Nomor pengaduan tidak ditemukan.';
-                             } catch { this.error = 'Gagal terhubung. Periksa koneksi Anda.'; }
-                             finally  { this.loading = false; }
+                                 if (!res.ok) {
+                                     this.error = json.error ?? 'Terjadi kesalahan.';
+                                 } else if (json.data?.length > 0) {
+                                     this.result   = json.data;
+                                     this.searched = true;
+                                 } else {
+                                     this.error = 'Nomor pengaduan tidak ditemukan.';
+                                 }
+                             } catch {
+                                 this.error = 'Gagal terhubung. Periksa koneksi Anda.';
+                             } finally {
+                                 this.loading = false;
+                             }
+                         },
+
+                         reset() {
+                             this.result     = null;
+                             this.error      = '';
+                             this.searched   = false;
+                             this.noPengaduan = '';
                          }
                      }">
 
-                    <div class="flex gap-2 mb-5">
-                        <input type="text" x-model="noPengaduan" @keydown.enter.prevent="cari()"
-                               placeholder="Contoh: PBG-2024-XXXXX"
-                               class="field-input flex-1">
-                        <button @click="cari()" :disabled="loading" class="btn-primary px-4 shrink-0">
-                            <span x-show="!loading"><i class="fa fa-magnifying-glass text-xs"></i></span>
-                            <span x-show="loading" x-cloak>
-                                <svg class="spinner" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10"
-                                            stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                                </svg>
-                            </span>
-                            <span class="hidden sm:inline">Cari</span>
-                        </button>
+                    {{-- Search form — hidden after successful search --}}
+                    <div x-show="!searched">
+                        <div class="flex gap-2 mb-4">
+                            <input type="text"
+                                   x-model="noPengaduan"
+                                   @keydown.enter.prevent="cari()"
+                                   placeholder="Contoh: 04092026-1"
+                                   class="field-input flex-1">
+                            <button @click="cari()" :disabled="loading"
+                                    class="btn-primary px-5 shrink-0">
+                                <span x-show="!loading" class="flex items-center gap-1.5">
+                                    <i class="fa fa-magnifying-glass text-xs"></i>
+                                    <span class="hidden sm:inline">Cari</span>
+                                </span>
+                                <span x-show="loading" x-cloak>
+                                    <svg class="spinner" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10"
+                                                stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor"
+                                              d="M4 12a8 8 0 018-8v8z"></path>
+                                    </svg>
+                                </span>
+                            </button>
+                        </div>
+
+                        {{-- Error --}}
+                        <div x-show="error" x-cloak class="alert-warning">
+                            <i class="fa fa-triangle-exclamation shrink-0"></i>
+                            <span x-text="error"></span>
+                        </div>
                     </div>
 
-                    <div x-show="error" x-cloak class="alert-warning mb-4">
-                        <i class="fa fa-triangle-exclamation shrink-0"></i>
-                        <span x-text="error"></span>
-                    </div>
-
+                    {{-- Result card --}}
                     <template x-if="result">
-                        <div class="space-y-4">
-                            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800
-                                        rounded-xl p-4 space-y-2">
-                                <div class="flex items-center gap-2">
-                                    <i class="fa fa-user text-blue-500 w-4 text-center shrink-0"></i>
-                                    <span class="text-slate-400 text-xs">Atas Nama:</span>
-                                    <span class="font-semibold text-slate-800 dark:text-slate-100 text-sm"
-                                          x-text="result[0].nama"></span>
-                                </div>
-                                <div class="flex items-start gap-2">
-                                    <i class="fa fa-map-marker-alt text-blue-500 w-4 text-center shrink-0 mt-0.5"></i>
-                                    <span class="text-slate-400 text-xs pt-0.5">Alamat:</span>
-                                    <span class="text-slate-600 dark:text-slate-300 text-xs"
-                                          x-text="result[0].alamat"></span>
-                                </div>
-                                <div class="flex items-start gap-2">
-                                    <i class="fa fa-comment text-blue-500 w-4 text-center shrink-0 mt-0.5"></i>
-                                    <span class="text-slate-400 text-xs pt-0.5">Pengaduan:</span>
-                                    <span class="text-slate-600 dark:text-slate-300 text-xs"
-                                          x-text="result[0].pengaduan"></span>
+                        <div class="space-y-4 sm:space-y-5">
+
+                            {{-- Header row: nomor + status badge + reset button --}}
+                            <div class="rounded-xl border border-slate-200 dark:border-slate-700
+                                        bg-slate-50/70 dark:bg-slate-900/30 px-4 py-3">
+                                <div class="flex items-start justify-between gap-3 flex-wrap">
+                                    <div class="flex items-center gap-3 min-w-0">
+                                        <div class="min-w-0">
+                                            <p class="text-[11px] uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                                                Nomor Pengaduan
+                                            </p>
+                                            <p class="font-bold text-slate-900 dark:text-white text-lg leading-tight truncate"
+                                               x-text="result[0].ticket || noPengaduan"></p>
+                                        </div>
+                                        {{-- Status badge --}}
+                                        <span class="shrink-0 inline-flex items-center gap-1.5 text-xs font-bold
+                                                     px-2.5 py-1 rounded-full"
+                                              :class="{
+                                                  'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300': result[0].status === 'Selesai',
+                                                  'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300':             result[0].status === 'Dikerjakan',
+                                                  'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300':         result[0].status === 'Diterima',
+                                                  'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200':            result[0].status === 'Dilaporkan',
+                                              }">
+                                            <i class="text-[10px]"
+                                               :class="{
+                                                   'fa fa-check-circle': result[0].status === 'Selesai',
+                                                   'fa fa-gear':         result[0].status === 'Dikerjakan',
+                                                   'fa fa-inbox':        result[0].status === 'Diterima',
+                                                   'fa fa-flag':         result[0].status === 'Dilaporkan',
+                                               }"></i>
+                                            <span x-text="result[0].status"></span>
+                                        </span>
+                                    </div>
+                                    <button @click="reset()"
+                                            class="shrink-0 inline-flex items-center gap-1.5 text-xs text-blue-600
+                                                   dark:text-blue-400 hover:underline font-medium pt-0.5">
+                                        <i class="fa fa-rotate-left text-xs"></i>Cari Nomor Lain
+                                    </button>
                                 </div>
                             </div>
 
-                            <div>
-                                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
+                            {{-- Informasi Pelapor (2-column grid) --}}
+                            <div class="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                                <p class="text-xs font-semibold text-slate-400 dark:text-slate-500
+                                           uppercase tracking-wide px-4 pt-3 pb-2">
+                                    Informasi Pelapor
+                                </p>
+                                <dl class="grid grid-cols-1 sm:grid-cols-[7rem_1fr] gap-x-3 gap-y-0
+                                           divide-y divide-slate-100 dark:divide-slate-700/60">
+                                    <dt class="text-slate-500 dark:text-slate-400 text-xs px-4 py-2.5 flex items-center">
+                                        Atas Nama
+                                    </dt>
+                                    <dd class="font-semibold text-slate-800 dark:text-white text-sm px-4 py-2.5 sm:border-l
+                                               border-slate-100 dark:border-slate-700/60"
+                                        x-text="result[0].nama"></dd>
+
+                                    <dt class="text-slate-500 dark:text-slate-400 text-xs px-4 py-2.5 flex items-start">
+                                        Alamat
+                                    </dt>
+                                    <dd class="text-slate-700 dark:text-slate-300 text-sm px-4 py-2.5 sm:border-l
+                                               border-slate-100 dark:border-slate-700/60"
+                                        x-text="result[0].alamat"></dd>
+
+                                    <dt class="text-slate-500 dark:text-slate-400 text-xs px-4 py-2.5 flex items-start">
+                                        Pengaduan
+                                    </dt>
+                                    <dd class="text-slate-700 dark:text-slate-300 text-sm px-4 py-2.5 sm:border-l
+                                               border-slate-100 dark:border-slate-700/60"
+                                        x-text="result[0].pengaduan"></dd>
+                                </dl>
+                            </div>
+
+                            {{-- Lifecycle timeline built from single SOAP record --}}
+                            <div class="rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3.5">
+                                <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-3">
                                     Riwayat Status
                                 </p>
-                                <ol class="relative border-l-2 border-blue-200 dark:border-blue-800 ml-2 space-y-5">
-                                    <template x-for="(item, i) in result" :key="i">
-                                        <li class="ml-5">
-                                            <span class="absolute -left-2 w-4 h-4 rounded-full bg-blue-600
-                                                         ring-4 ring-white dark:ring-slate-800 flex items-center justify-center"></span>
-                                            <p class="text-sm font-semibold text-slate-800 dark:text-slate-100"
-                                               x-text="item.status"></p>
-                                            <p class="text-xs text-slate-400 mt-0.5"
-                                               x-text="formatTanggal(item.tanggal)"></p>
+
+                                <ol class="space-y-3">
+                                    {{-- Step 1: Dilaporkan --}}
+                                    <li class="relative pl-8">
+                                        <span class="absolute left-0 top-0.5 flex items-center justify-center
+                                                     w-4 h-4 rounded-full bg-slate-500 dark:bg-slate-400">
+                                            <i class="fa fa-flag text-white text-[7px]"></i>
+                                        </span>
+                                            <span x-show="result[0].tanggal_selesai" x-cloak
+                                                class="absolute left-1.75 top-5 h-8 w-px bg-slate-200 dark:bg-slate-600"></span>
+
+                                        <p class="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-tight">
+                                            Dilaporkan
+                                        </p>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1"
+                                           x-text="formatTanggal(result[0].tanggal_masuk)"></p>
+                                    </li>
+
+                                    {{-- Step 2: Selesai (only if processed date is valid) --}}
+                                    <template x-if="result[0].tanggal_selesai">
+                                        <li class="relative pl-8">
+                                            <span class="absolute left-0 top-0.5 flex items-center justify-center
+                                                         w-4 h-4 rounded-full bg-emerald-500">
+                                                <i class="fa fa-check text-white text-[7px]"></i>
+                                            </span>
+                                            <p class="text-sm font-semibold text-emerald-600 dark:text-emerald-400 leading-tight">
+                                                Selesai
+                                            </p>
+                                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1"
+                                               x-text="formatTanggal(result[0].tanggal_selesai)"></p>
                                         </li>
                                     </template>
                                 </ol>
                             </div>
+
+                            {{-- Catatan petugas --}}
+                            <template x-if="result[0].catatan">
+                                <div class="rounded-xl border border-slate-200 dark:border-slate-700
+                                            bg-slate-50 dark:bg-slate-900/30 px-4 py-3.5">
+                                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400
+                                               uppercase tracking-wide mb-1.5">
+                                        <i class="fa fa-note-sticky mr-1"></i>Catatan Petugas
+                                    </p>
+                                    <p class="text-sm text-slate-800 dark:text-slate-200 font-medium"
+                                       x-text="result[0].catatan"></p>
+                                </div>
+                            </template>
+
                         </div>
                     </template>
 
-                    <template x-if="!result && !error && !loading">
-                        <div class="text-center py-12">
+                    {{-- Empty state --}}
+                    <template x-if="!result && !searched && !loading">
+                        <div class="text-center py-10">
                             <div class="w-14 h-14 mx-auto mb-3 rounded-full
                                         bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
                                 <i class="fa fa-magnifying-glass text-xl text-slate-300 dark:text-slate-500"></i>
                             </div>
-                            <p class="text-sm text-slate-400">Masukkan nomor pengaduan untuk melihat status.</p>
+                            <p class="text-sm text-slate-400 dark:text-slate-500">
+                                Masukkan nomor pengaduan untuk melihat status.
+                            </p>
                         </div>
                     </template>
 
