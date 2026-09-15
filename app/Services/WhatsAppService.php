@@ -9,15 +9,6 @@ class WhatsAppService
 {
     private const API_URL = 'https://api.fonnte.com/send';
 
-    private string $token;
-    private string $groupTargets;
-
-    public function __construct()
-    {
-        $this->token        = (string) config('services.fonnte.token', '');
-        $this->groupTargets = (string) config('services.fonnte.group_targets', '');
-    }
-
     /** Kirim notifikasi konfirmasi pengaduan ke nomor pelanggan. */
     public function sendToCustomer(string $phone, string $name, string $idPengaduan): void
     {
@@ -36,6 +27,11 @@ class WhatsAppService
      */
     public function sendToGroup(array $data, string $idPengaduan): void
     {
+        $groupTargets = (string) config('services.fonnte.group_targets', '');
+        if ($groupTargets === '') {
+            return;
+        }
+
         $message = "*Hallo semua para awak Tukang Ledeng*.\n"
             . "Ada pengaduan baru dengan nomor pengaduan {$idPengaduan} dari {$data['Name']}. "
             . "Mohon segera ditindaklanjuti.\n"
@@ -49,28 +45,30 @@ class WhatsAppService
             . "Deskripsi      : {$data['CompliantContent']}\n\n"
             . "Terimakasih atas kerjasamanya\u{1F64F}";
 
-        if ($this->groupTargets !== '') {
-            $this->dispatch($this->groupTargets, $message, ['delay' => '6']);
-        }
+        $this->dispatch($groupTargets, $message, ['delay' => '6']);
     }
 
     /** Kirim satu pesan melalui Fonnte API; catat error ke log tanpa menghentikan alur utama. */
     private function dispatch(string $target, string $message, array $extra = []): void
     {
-        if ($this->token === '') {
+        $token = (string) config('services.fonnte.token', '');
+        if ($token === '') {
             Log::warning('WhatsAppService: FONNTE_TOKEN belum dikonfigurasi.');
             return;
         }
 
         try {
-            Http::withHeaders(['Authorization' => $this->token])
+            Http::withHeaders(['Authorization' => $token])
                 ->timeout(10)
                 ->post(self::API_URL, array_merge(
                     ['target' => $target, 'message' => $message],
                     $extra
                 ));
         } catch (\Throwable $e) {
-            Log::error('WhatsAppService gagal mengirim pesan: ' . $e->getMessage());
+            Log::error('WhatsAppService gagal mengirim pesan', [
+                'reason' => $e->getMessage(),
+                'target' => substr($target, 0, 4) . '****',
+            ]);
         }
     }
 }

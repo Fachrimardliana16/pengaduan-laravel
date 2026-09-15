@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use Exception;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Http;
 
@@ -61,6 +62,11 @@ class StorePengaduanRequest extends FormRequest
         return function (string $attribute, mixed $value, \Closure $fail): void {
             $secret = config('services.recaptcha.secret');
             if (empty($secret)) {
+                if (app()->environment('production')) {
+                    report(new Exception('RECAPTCHA_SECRET_KEY tidak dikonfigurasi di environment production.'));
+                    $fail('Verifikasi reCAPTCHA tidak aktif. Hubungi administrator.');
+                }
+
                 return; // lewati validasi jika secret belum dikonfigurasi (dev/staging)
             }
 

@@ -26,6 +26,7 @@ class PdamSoapService
             'trace' => true,
             'exceptions' => true,
             'connection_timeout' => 10,
+            'cache_wsdl' => WSDL_CACHE_DISK,
         ]);
     }
 
@@ -104,8 +105,8 @@ class PdamSoapService
             $entries = $dom->getElementsByTagName('CustomerCompliantViewModel');
 
             foreach ($entries as $entry) {
-                $id = $entry->childNodes->item(2)?->nodeValue;
-                if ($id !== null && $id !== '') {
+                $id = $this->getChildNodeValue($entry, 'Number');
+                if ($id !== '') {
                     return $id;
                 }
             }
@@ -271,12 +272,16 @@ class PdamSoapService
     private function parseDom(string $xml): DOMDocument
     {
         $dom = new DOMDocument;
-        libxml_use_internal_errors(true);
-        if (! $dom->loadXML($xml)) {
-            libxml_clear_errors();
-            throw new Exception('Gagal mem-parse respons XML dari SOAP backend.');
-        }
+        $previous = libxml_use_internal_errors(true);
+        try {
+            if (! $dom->loadXML($xml, LIBXML_NONET)) {
+                throw new Exception('Gagal mem-parse respons XML dari SOAP backend.');
+            }
 
-        return $dom;
+            return $dom;
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+        }
     }
 }

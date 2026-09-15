@@ -175,7 +175,9 @@
                                       this.kecamatanId = this.kecamatanList[0].Id;
                                       await this.loadDesa();
                                   }
-                              } catch(e) {}
+                              } catch(e) {
+                                  console.error('Gagal memuat daftar kecamatan:', e);
+                              }
                           },
 
                           async loadDesa() {
@@ -184,7 +186,9 @@
                                   const res  = await fetch('{{ route('api.desa') }}?id=' + this.kecamatanId);
                                   const json = await res.json();
                                   this.desaList = json.data ?? [];
-                              } catch(e) {}
+                              } catch(e) {
+                                  console.error('Gagal memuat daftar desa:', e);
+                              }
                           },
 
                           requestGeolocation() {

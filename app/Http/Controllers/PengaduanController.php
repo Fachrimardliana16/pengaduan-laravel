@@ -52,7 +52,10 @@ class PengaduanController extends Controller
         $this->whatsapp->sendToCustomer($data['PhoneNumber'], $data['Name'], $idPengaduan);
         $this->whatsapp->sendToGroup($data, $idPengaduan);
 
-        return view('pengaduan.success', compact('idPengaduan'));
+        return view('pengaduan.success', [
+            'idPengaduan' => $idPengaduan,
+            'name'        => $data['Name'],
+        ]);
     }
 
     /** Kembalikan daftar kecamatan; di-cache 6 jam karena data jarang berubah. */

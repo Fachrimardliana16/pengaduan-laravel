@@ -29,7 +29,7 @@
             <div class="flex-1">
                 <h2 class="text-3xl sm:text-4xl font-black leading-tight mb-4 text-white">
                     Terima<br>Kasih<br>
-                    <span class="text-emerald-400">Budi!</span>
+                    <span class="text-emerald-400">{{ $name }}!</span>
                 </h2>
                 <p class="text-blue-200 text-sm leading-relaxed">
                     Pengaduan Anda telah kami terima. Tim kami akan segera
