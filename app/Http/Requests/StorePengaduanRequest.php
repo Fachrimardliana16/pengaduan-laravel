@@ -16,19 +16,27 @@ class StorePengaduanRequest extends FormRequest
     /** @return array<string, mixed> */
     public function rules(): array
     {
-        return [
-            'Name'                 => ['required', 'string', 'max:100'],
-            'PhoneNumber'          => ['required', 'digits_between:10,15'],
-            'CustomerNumber'       => ['nullable', 'digits_between:1,12'],
-            'Address'              => ['required', 'string', 'max:250'],
-            'SubDistricts'         => ['required', 'integer', 'min:1'],
-            'Villages'             => ['required', 'integer', 'min:1'],
-            'CompliantType'        => ['required', 'integer', 'between:1,6'],
-            'CompliantContent'     => ['required', 'string', 'max:500'],
-            'LatCoords'            => ['nullable', 'numeric'],
-            'LngCoords'            => ['nullable', 'numeric'],
-            'g-recaptcha-response' => ['required', $this->recaptchaRule()],
+        $rules = [
+            'Name' => ['required', 'string', 'max:100'],
+            'PhoneNumber' => ['required', 'digits_between:10,15'],
+            'CustomerNumber' => ['nullable', 'digits_between:1,12'],
+            'Address' => ['required', 'string', 'max:250'],
+            'SubDistricts' => ['required', 'integer', 'min:1'],
+            'Villages' => ['required', 'integer', 'min:1'],
+            'CompliantType' => ['required', 'integer', 'between:1,6'],
+            'CompliantContent' => ['required', 'string', 'max:500'],
+            'LatCoords' => ['nullable', 'numeric'],
+            'LngCoords' => ['nullable', 'numeric'],
+            'submission_token' => ['required', 'uuid'],
         ];
+
+        if ($this->recaptchaConfigured() || app()->environment('production')) {
+            $rules['g-recaptcha-response'] = ['required', $this->recaptchaRule()];
+        } else {
+            $rules['g-recaptcha-response'] = ['nullable'];
+        }
+
+        return $rules;
     }
 
     /** @return array<string, string> */
@@ -36,8 +44,10 @@ class StorePengaduanRequest extends FormRequest
     {
         return [
             'g-recaptcha-response.required' => 'Harap selesaikan verifikasi reCAPTCHA.',
-            'PhoneNumber.digits_between'     => 'Nomor telepon harus 10–15 digit angka.',
-            'CompliantContent.max'           => 'Deskripsi pengaduan maksimal 500 karakter.',
+            'PhoneNumber.digits_between' => 'Nomor telepon harus 10–15 digit angka.',
+            'CompliantContent.max' => 'Deskripsi pengaduan maksimal 500 karakter.',
+            'submission_token.required' => 'Sesi formulir tidak valid. Silakan muat ulang halaman.',
+            'submission_token.uuid' => 'Sesi formulir tidak valid. Silakan muat ulang halaman.',
         ];
     }
 
@@ -45,15 +55,20 @@ class StorePengaduanRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'Name'             => 'Nama Pelapor',
-            'PhoneNumber'      => 'Nomor Telepon',
-            'CustomerNumber'   => 'Nomor Pelanggan',
-            'Address'          => 'Alamat',
-            'SubDistricts'     => 'Kecamatan',
-            'Villages'         => 'Desa',
-            'CompliantType'    => 'Jenis Pengaduan',
+            'Name' => 'Nama Pelapor',
+            'PhoneNumber' => 'Nomor Telepon',
+            'CustomerNumber' => 'Nomor Pelanggan',
+            'Address' => 'Alamat',
+            'SubDistricts' => 'Kecamatan',
+            'Villages' => 'Desa',
+            'CompliantType' => 'Jenis Pengaduan',
             'CompliantContent' => 'Deskripsi Pengaduan',
         ];
+    }
+
+    private function recaptchaConfigured(): bool
+    {
+        return filled(config('services.recaptcha.site_key')) && filled(config('services.recaptcha.secret'));
     }
 
     /** Validasi token reCAPTCHA ke server Google secara server-side. */

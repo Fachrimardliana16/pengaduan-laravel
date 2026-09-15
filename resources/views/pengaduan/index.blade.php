@@ -2,12 +2,11 @@
 
 @section('title', 'Layanan Pengaduan | Perumdam Tirta Perwira')
 
-@push('styles')
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-@endpush
-
 @section('content')
+
+@php($recaptchaSiteKey = config('services.recaptcha.site_key'))
+@php($recaptchaEnabled = filled($recaptchaSiteKey))
+@php($recaptchaRequired = app()->environment('production'))
 
 {{-- Validation errors --}}
 @if ($errors->any())
@@ -216,6 +215,7 @@
                       x-init="loadKecamatan()">
 
                     @csrf
+                    <input type="hidden" name="submission_token" value="{{ old('submission_token', (string) \Illuminate\Support\Str::uuid()) }}">
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
@@ -323,7 +323,11 @@
                                     <i class="fa fa-crosshairs text-xs"></i>Lokasi Saya
                                 </button>
                             </div>
-                            <div id="peta" class="w-full h-48 rounded-lg border border-slate-200 dark:border-slate-600 overflow-hidden"></div>
+                            <div id="peta" class="w-full h-48 rounded-lg border border-slate-200 dark:border-slate-600 overflow-hidden">
+                                <div id="petaFallback" class="h-full flex items-center justify-center px-4 text-center text-xs text-slate-400 dark:text-slate-500">
+                                    Memuat peta...
+                                </div>
+                            </div>
                             <p x-show="geoError" x-cloak class="field-error mt-1">
                                 <i class="fa fa-triangle-exclamation mr-1"></i><span x-text="geoError"></span>
                             </p>
@@ -332,7 +336,18 @@
                         {{-- reCAPTCHA --}}
                         <div class="sm:col-span-2">
                             <label class="field-label">Verifikasi</label>
-                            <div class="g-recaptcha" data-sitekey="{{ config('services.recaptcha.site_key') }}"></div>
+                            @if ($recaptchaSiteKey)
+                                <div class="g-recaptcha" data-sitekey="{{ $recaptchaSiteKey }}"></div>
+                            @elseif ($recaptchaRequired)
+                                <div class="alert-warning">
+                                    <i class="fa fa-triangle-exclamation shrink-0"></i>
+                                    <span>reCAPTCHA belum dikonfigurasi. Isi RECAPTCHA_SITE_KEY dan RECAPTCHA_SECRET_KEY di environment.</span>
+                                </div>
+                            @else
+                                <p class="text-xs text-slate-400 dark:text-slate-500">
+                                    Verifikasi reCAPTCHA nonaktif di environment lokal.
+                                </p>
+                            @endif
                             @error('g-recaptcha-response') <p class="field-error">{{ $message }}</p> @enderror
                         </div>
 
@@ -506,58 +521,61 @@
                                 </dl>
                             </div>
 
-                            {{-- Lifecycle timeline built from single SOAP record --}}
+                            {{-- Lifecycle timeline --}}
                             <div class="rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3.5">
                                 <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-3">
                                     Riwayat Status
                                 </p>
 
                                 <ol class="space-y-3">
-                                    {{-- Step 1: Dilaporkan --}}
-                                    <li class="relative pl-8">
-                                        <span class="absolute left-0 top-0.5 flex items-center justify-center
-                                                     w-4 h-4 rounded-full bg-slate-500 dark:bg-slate-400">
-                                            <i class="fa fa-flag text-white text-[7px]"></i>
-                                        </span>
-                                            <span x-show="result[0].tanggal_selesai" x-cloak
-                                                class="absolute left-1.75 top-5 h-8 w-px bg-slate-200 dark:bg-slate-600"></span>
-
-                                        <p class="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-tight">
-                                            Dilaporkan
-                                        </p>
-                                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1"
-                                           x-text="formatTanggal(result[0].tanggal_masuk)"></p>
-                                    </li>
-
-                                    {{-- Step 2: Selesai (only if processed date is valid) --}}
-                                    <template x-if="result[0].tanggal_selesai">
-                                        <li class="relative pl-8">
+                                    <template x-for="(item, index) in statusTimeline(result)" :key="`${item.status}-${item.tanggal_masuk}-${item.tanggal_selesai}-${index}`">
+                                        <li class="relative pl-8 pb-1">
                                             <span class="absolute left-0 top-0.5 flex items-center justify-center
-                                                         w-4 h-4 rounded-full bg-emerald-500">
-                                                <i class="fa fa-check text-white text-[7px]"></i>
+                                                         w-4 h-4 rounded-full"
+                                                  :class="{
+                                                      'bg-emerald-500': item.status === 'Selesai',
+                                                      'bg-blue-500': item.status === 'Dikerjakan',
+                                                      'bg-amber-500': item.status === 'Diterima',
+                                                      'bg-slate-500 dark:bg-slate-400': item.status === 'Dilaporkan',
+                                                      'bg-slate-400 dark:bg-slate-500': !['Selesai', 'Dikerjakan', 'Diterima', 'Dilaporkan'].includes(item.status),
+                                                  }">
+                                                <i class="text-white text-[7px]"
+                                                   :class="{
+                                                       'fa fa-check': item.status === 'Selesai',
+                                                       'fa fa-gear': item.status === 'Dikerjakan',
+                                                       'fa fa-inbox': item.status === 'Diterima',
+                                                       'fa fa-flag': item.status === 'Dilaporkan',
+                                                       'fa fa-circle': !['Selesai', 'Dikerjakan', 'Diterima', 'Dilaporkan'].includes(item.status),
+                                                   }"></i>
                                             </span>
-                                            <p class="text-sm font-semibold text-emerald-600 dark:text-emerald-400 leading-tight">
-                                                Selesai
+                                            <span x-show="index < statusTimeline(result).length - 1" x-cloak
+                                                  class="absolute left-1.75 top-5 bottom-0 w-px bg-slate-200 dark:bg-slate-600"></span>
+
+                                            <p class="text-sm font-semibold leading-tight"
+                                               :class="{
+                                                   'text-emerald-600 dark:text-emerald-400': item.status === 'Selesai',
+                                                   'text-blue-600 dark:text-blue-400': item.status === 'Dikerjakan',
+                                                   'text-amber-600 dark:text-amber-400': item.status === 'Diterima',
+                                                   'text-slate-800 dark:text-slate-100': item.status === 'Dilaporkan' || !['Selesai', 'Dikerjakan', 'Diterima'].includes(item.status),
+                                               }"
+                                               x-text="item.status">
                                             </p>
                                             <p class="text-xs text-slate-500 dark:text-slate-400 mt-1"
-                                               x-text="formatTanggal(result[0].tanggal_selesai)"></p>
+                                               x-text="formatTanggal(item.tanggal_selesai || item.tanggal_masuk)"></p>
+
+                                            <template x-if="item.catatan">
+                                                <div class="mt-2 rounded-lg bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-700 px-3 py-2">
+                                                    <p class="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">
+                                                        Catatan Petugas
+                                                    </p>
+                                                    <p class="text-sm text-slate-800 dark:text-slate-200 font-medium mt-0.5"
+                                                       x-text="item.catatan"></p>
+                                                </div>
+                                            </template>
                                         </li>
                                     </template>
                                 </ol>
                             </div>
-
-                            {{-- Catatan petugas --}}
-                            <template x-if="result[0].catatan">
-                                <div class="rounded-xl border border-slate-200 dark:border-slate-700
-                                            bg-slate-50 dark:bg-slate-900/30 px-4 py-3.5">
-                                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400
-                                               uppercase tracking-wide mb-1.5">
-                                        <i class="fa fa-note-sticky mr-1"></i>Catatan Petugas
-                                    </p>
-                                    <p class="text-sm text-slate-800 dark:text-slate-200 font-medium"
-                                       x-text="result[0].catatan"></p>
-                                </div>
-                            </template>
 
                         </div>
                     </template>
@@ -586,14 +604,22 @@
 @endsection
 
 @push('scripts')
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN/WPbA=" crossorigin=""></script>
 <script>
     let _mapInitialized = false;
 
     window.leafletMapInit = function () {
         if (_mapInitialized) { window.leafletMap?.invalidateSize(); return; }
+
+        const mapEl = document.getElementById('peta');
+        if (!mapEl) return;
+
+        if (typeof L === 'undefined') {
+            mapEl.innerHTML = '<div class="h-full flex items-center justify-center px-4 text-center text-xs text-red-500">Peta gagal dimuat. Asset Leaflet lokal belum siap.</div>';
+            return;
+        }
+
         _mapInitialized = true;
+        document.getElementById('petaFallback')?.remove();
 
         const lat0 = -7.404609, lng0 = 109.3747799;
         const map  = L.map('peta', { scrollWheelZoom: false }).setView([lat0, lng0], 15);
@@ -639,6 +665,26 @@
         return `${hari[d.getDay()]}, ${d.getDate()} ${bulan[d.getMonth()]} ${d.getFullYear()}`
              + `  ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     }
+
+    function statusTimeline(result) {
+        if (!Array.isArray(result) || result.length === 0) return [];
+
+        const first = result[0];
+        const reportedLog = result.find(item => item.status === 'Dilaporkan');
+        const reported = reportedLog ?? {
+            ...first,
+            status: 'Dilaporkan',
+            tanggal_selesai: '',
+            catatan: '',
+        };
+
+        return [
+            reported,
+            ...result.filter(item => item.status !== 'Dilaporkan'),
+        ];
+    }
 </script>
-<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+@if ($recaptchaEnabled)
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+@endif
 @endpush

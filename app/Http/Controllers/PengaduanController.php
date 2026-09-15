@@ -32,17 +32,29 @@ class PengaduanController extends Controller
     public function store(StorePengaduanRequest $request): View|RedirectResponse
     {
         $data = $request->validated();
+        $submissionToken = (string) $data['submission_token'];
+        $submissionKey = 'pengaduan.submit.'.sha1($request->ip().'|'.$submissionToken);
+
+        if (! Cache::add($submissionKey, true, now()->addMinutes(10))) {
+            return back()
+                ->withErrors(['pengaduan' => 'Pengaduan ini sedang diproses. Mohon tunggu hasil pengiriman sebelumnya.'])
+                ->withInput();
+        }
 
         try {
             $idPengaduan = $this->soap->submitComplaint($data);
         } catch (Exception $e) {
+            Cache::forget($submissionKey);
             report($e);
+
             return back()
                 ->withErrors(['pengaduan' => 'Terjadi kesalahan saat mengirim pengaduan. Silakan coba lagi.'])
                 ->withInput();
         }
 
         if ($idPengaduan === null) {
+            Cache::forget($submissionKey);
+
             return back()
                 ->withErrors(['pengaduan' => 'Pengaduan tidak dapat diproses saat ini. Silakan coba beberapa saat lagi.'])
                 ->withInput();
@@ -54,7 +66,7 @@ class PengaduanController extends Controller
 
         return view('pengaduan.success', [
             'idPengaduan' => $idPengaduan,
-            'name'        => $data['Name'],
+            'name' => $data['Name'],
         ]);
     }
 
@@ -62,6 +74,7 @@ class PengaduanController extends Controller
     public function kecamatan(): JsonResponse
     {
         $data = Cache::remember('soap.kecamatan', now()->addHours(6), fn () => $this->soap->getSubdistricts());
+
         return response()->json(['data' => $data]);
     }
 
@@ -73,6 +86,7 @@ class PengaduanController extends Controller
             return response()->json(['data' => []]);
         }
         $data = Cache::remember("soap.desa.{$id}", now()->addHours(6), fn () => $this->soap->getVillagesBySubdistrict($id));
+
         return response()->json(['data' => $data]);
     }
 
@@ -86,6 +100,7 @@ class PengaduanController extends Controller
         }
 
         $data = $this->soap->checkComplaint($noPengaduan);
+
         return response()->json(['data' => $data]);
     }
 }
