@@ -37,3 +37,4 @@ database/*.sqlite-wal
 /.github/copilot-instructions.md
 CLAUDE.md
 CLAUDE.md
+.continue/mcpServers/new-mcp-server.yaml

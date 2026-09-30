@@ -11,22 +11,22 @@ return [
     */
 
     'mailgun' => [
-        'domain'   => env('MAILGUN_DOMAIN'),
-        'secret'   => env('MAILGUN_SECRET'),
+        'domain' => env('MAILGUN_DOMAIN'),
+        'secret' => env('MAILGUN_SECRET'),
         'endpoint' => env('MAILGUN_ENDPOINT', 'api.mailgun.net'),
-        'scheme'   => 'https',
+        'scheme' => 'https',
     ],
 
     // reCAPTCHA v2
     'recaptcha' => [
         'site_key' => env('RECAPTCHA_SITE_KEY'),
-        'secret'   => env('RECAPTCHA_SECRET_KEY'),
+        'secret' => env('RECAPTCHA_SECRET_KEY'),
     ],
 
     // Fonnte WhatsApp Gateway
     'fonnte' => [
-        'token'          => env('FONNTE_TOKEN'),
-        'group_targets'  => env('FONNTE_GROUP_TARGETS'),
+        'token' => env('FONNTE_TOKEN'),
+        'group_targets' => env('FONNTE_GROUP_TARGETS'),
     ],
 
     // PDAM SOAP Web Service

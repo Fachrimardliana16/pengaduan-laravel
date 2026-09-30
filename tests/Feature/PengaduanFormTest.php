@@ -65,4 +65,58 @@ class PengaduanFormTest extends TestCase
         $this->post('/pengaduan', $payload)
             ->assertSessionHasErrors('pengaduan');
     }
+
+    public function test_api_cek_returns_masked_pii(): void
+    {
+        $soap = Mockery::mock(PdamSoapService::class);
+        $soap->shouldReceive('checkComplaint')
+            ->with('04092026-1')
+            ->once()
+            ->andReturn([[
+                'nama' => 'B*** S******',
+                'alamat' => 'Jl. M*** ***gga',
+                'ticket' => '04092026-1',
+                'no_pelanggan' => '12***6',
+                'pengaduan' => 'Pipa bocor',
+                'status' => 'Diterima',
+                'tanggal_masuk' => '2026-09-30',
+                'tanggal_selesai' => '',
+                'catatan' => '',
+            ]]);
+        $this->app->instance(PdamSoapService::class, $soap);
+
+        $this->getJson('/api/cek-pengaduan?NoPengaduan=04092026-1')
+            ->assertOk()
+            ->assertJsonPath('data.0.nama', 'B*** S******')
+            ->assertJsonPath('data.0.no_pelanggan', '12***6');
+    }
+
+    public function test_api_cek_rejects_invalid_ticket_format(): void
+    {
+        $this->getJson('/api/cek-pengaduan?NoPengaduan=invalid@ticket!')
+            ->assertStatus(422)
+            ->assertJsonPath('error', 'Format nomor pengaduan tidak valid.');
+    }
+
+    public function test_whatsapp_service_normalizes_local_phone_number(): void
+    {
+        $service = new WhatsAppService();
+        $this->assertSame('628123456789', $service->normalizePhoneNumber('08123456789'));
+        $this->assertSame('628123456789', $service->normalizePhoneNumber('+628123456789'));
+        $this->assertSame('628123456789', $service->normalizePhoneNumber('628123456789'));
+    }
+
+    public function test_kecamatan_does_not_cache_empty_result(): void
+    {
+        Cache::flush();
+        $soap = Mockery::mock(PdamSoapService::class);
+        $soap->shouldReceive('getSubdistricts')->once()->andReturn([]);
+        $this->app->instance(PdamSoapService::class, $soap);
+
+        $this->getJson('/api/kecamatan')
+            ->assertOk()
+            ->assertJson(['data' => []]);
+
+        $this->assertFalse(Cache::has('soap.kecamatan'));
+    }
 }

@@ -12,12 +12,13 @@ class WhatsAppService
     /** Kirim notifikasi konfirmasi pengaduan ke nomor pelanggan. */
     public function sendToCustomer(string $phone, string $name, string $idPengaduan): void
     {
+        $normalizedPhone = $this->normalizePhoneNumber($phone);
         $message = "Terimakasih, {$name}. Pengaduan anda sudah kami terima dengan nomor pengaduan {$idPengaduan}. "
             . 'Untuk mengetahui progress pengaduan anda silahkan masukan nomor pengaduan pada menu cari pengaduan '
             . 'di website https://pengaduan.pdampurbalingga.co.id '
             . "Terimakasih dan Mohon Maaf atas ketidaknyamanannya.\u{1F64F}";
 
-        $this->dispatch($phone, $message, ['countryCode' => '62']);
+        $this->dispatch($normalizedPhone, $message, ['countryCode' => '62']);
     }
 
     /**
@@ -39,7 +40,7 @@ class WhatsAppService
             . "Monitoring Progress di https://pengaduan.pdampurbalingga.co.id/\n\n"
             . "\u{1F4A7}PENGADUAN PELANGGAN\u{1F4A7}\n"
             . "Nama           : {$data['Name']}\n"
-            . "No. Pelanggan  : " . ($data['CustomerNumber'] ?? '-') . "\n"
+            . 'No. Pelanggan  : ' . ($data['CustomerNumber'] ?? '-') . "\n"
             . "Alamat         : {$data['Address']}\n"
             . "Nomor Telepon  : {$data['PhoneNumber']}\n"
             . "Deskripsi      : {$data['CompliantContent']}\n\n"
@@ -48,22 +49,47 @@ class WhatsAppService
         $this->dispatch($groupTargets, $message, ['delay' => '6']);
     }
 
+    /** Normalisasi nomor telepon lokal/internasional ke format standar Fonnte (62xxx). */
+    public function normalizePhoneNumber(string $phone): string
+    {
+        $clean = preg_replace('/[^\d]/', '', $phone) ?: '';
+
+        if (str_starts_with($clean, '0')) {
+            return '62' . substr($clean, 1);
+        }
+
+        if (str_starts_with($clean, '62')) {
+            return $clean;
+        }
+
+        return $clean;
+    }
+
     /** Kirim satu pesan melalui Fonnte API; catat error ke log tanpa menghentikan alur utama. */
     private function dispatch(string $target, string $message, array $extra = []): void
     {
         $token = (string) config('services.fonnte.token', '');
         if ($token === '') {
             Log::warning('WhatsAppService: FONNTE_TOKEN belum dikonfigurasi.');
+
             return;
         }
 
         try {
-            Http::withHeaders(['Authorization' => $token])
+            $response = Http::withHeaders(['Authorization' => $token])
                 ->timeout(10)
                 ->post(self::API_URL, array_merge(
                     ['target' => $target, 'message' => $message],
                     $extra
                 ));
+
+            if (! $response->successful()) {
+                Log::warning('WhatsAppService: Fonnte API mengembalikan status non-2xx', [
+                    'status' => $response->status(),
+                    'body' => $response->json() ?? $response->body(),
+                    'target' => substr($target, 0, 4) . '****',
+                ]);
+            }
         } catch (\Throwable $e) {
             Log::error('WhatsAppService gagal mengirim pesan', [
                 'reason' => $e->getMessage(),

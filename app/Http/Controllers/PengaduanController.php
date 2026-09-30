@@ -70,22 +70,40 @@ class PengaduanController extends Controller
         ]);
     }
 
-    /** Kembalikan daftar kecamatan; di-cache 6 jam karena data jarang berubah. */
+    /** Kembalikan daftar kecamatan; di-cache 6 jam jika berhasil memuat data. */
     public function kecamatan(): JsonResponse
     {
-        $data = Cache::remember('soap.kecamatan', now()->addHours(6), fn () => $this->soap->getSubdistricts());
+        $cached = Cache::get('soap.kecamatan');
+        if (is_array($cached) && $cached !== []) {
+            return response()->json(['data' => $cached]);
+        }
+
+        $data = $this->soap->getSubdistricts();
+        if ($data !== []) {
+            Cache::put('soap.kecamatan', $data, now()->addHours(6));
+        }
 
         return response()->json(['data' => $data]);
     }
 
-    /** Kembalikan daftar desa per kecamatan; di-cache per ID selama 6 jam. */
+    /** Kembalikan daftar desa per kecamatan; di-cache per ID selama 6 jam jika data ditemukan. */
     public function desa(Request $request): JsonResponse
     {
         $id = (int) $request->query('id', 0);
         if ($id < 1) {
             return response()->json(['data' => []]);
         }
-        $data = Cache::remember("soap.desa.{$id}", now()->addHours(6), fn () => $this->soap->getVillagesBySubdistrict($id));
+
+        $cacheKey = "soap.desa.{$id}";
+        $cached = Cache::get($cacheKey);
+        if (is_array($cached) && $cached !== []) {
+            return response()->json(['data' => $cached]);
+        }
+
+        $data = $this->soap->getVillagesBySubdistrict($id);
+        if ($data !== []) {
+            Cache::put($cacheKey, $data, now()->addHours(6));
+        }
 
         return response()->json(['data' => $data]);
     }

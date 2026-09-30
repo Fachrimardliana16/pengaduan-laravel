@@ -85,13 +85,18 @@ class StorePengaduanRequest extends FormRequest
                 return; // lewati validasi jika secret belum dikonfigurasi (dev/staging)
             }
 
-            $response = Http::asForm()->timeout(5)->post(
-                'https://www.google.com/recaptcha/api/siteverify',
-                ['secret' => $secret, 'response' => $value, 'remoteip' => $this->ip()]
-            );
+            try {
+                $response = Http::asForm()->timeout(5)->post(
+                    'https://www.google.com/recaptcha/api/siteverify',
+                    ['secret' => $secret, 'response' => $value, 'remoteip' => $this->ip()]
+                );
 
-            if (! $response->json('success')) {
-                $fail('Verifikasi reCAPTCHA gagal. Silakan coba lagi.');
+                if (! $response->json('success')) {
+                    $fail('Verifikasi reCAPTCHA gagal. Silakan coba lagi.');
+                }
+            } catch (\Throwable $e) {
+                report($e);
+                $fail('Gagal memverifikasi reCAPTCHA ke server Google. Silakan coba beberapa saat lagi.');
             }
         };
     }

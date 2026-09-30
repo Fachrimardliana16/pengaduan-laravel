@@ -38,7 +38,7 @@ class PdamSoapService
             $client->__call('subDistricts', [['Id' => 1]]);
 
             return $this->parseComboLookup($client->__getLastResponse());
-        } catch (SoapFault) {
+        } catch (\Throwable) {
             return [];
         }
     }
@@ -54,7 +54,7 @@ class PdamSoapService
             ]]);
 
             return $this->parseComboLookup($client->__getLastResponse());
-        } catch (SoapFault) {
+        } catch (\Throwable) {
             return [];
         }
     }
@@ -80,8 +80,8 @@ class PdamSoapService
             'PhoneNumber' => $payload['PhoneNumber'],
             'Email' => '-',
             'PDAMCustNumber' => $payload['CustomerNumber'] ?? '-',
-            'LatCoords' => $payload['LatCoords'] ?? '0',
-            'LngCoords' => $payload['LngCoords'] ?? '0',
+            'LatCoords' => is_numeric($payload['LatCoords'] ?? null) ? (float) $payload['LatCoords'] : 0.0,
+            'LngCoords' => is_numeric($payload['LngCoords'] ?? null) ? (float) $payload['LngCoords'] : 0.0,
             'CompliantContent' => $payload['CompliantContent'],
             'Photo' => '-',
             'CompliantStatusId' => 1,
@@ -89,13 +89,13 @@ class PdamSoapService
             'SubDistrictsId' => (int) $payload['SubDistricts'],
             'VillagesId' => (int) $payload['Villages'],
             'InputedDate' => $today,
-            'isDeleted' => 1,
+            'isDeleted' => false,
             'UpdatedDate' => $today,
-            'SubDistrictName' => '1',
-            'VillagesName' => '1',
+            'SubDistrictName' => '-',
+            'VillagesName' => '-',
             'InputedBy' => 'web',
             'CompliantTypeId' => (int) $payload['CompliantType'],
-            'CompliantTypeName' => '1',
+            'CompliantTypeName' => '-',
         ];
 
         try {
@@ -138,7 +138,7 @@ class PdamSoapService
             $client->__call('CekPengaduan', [['NoPengaduan' => $noPengaduan]]);
 
             return $this->parseComplaintSummary($client->__getLastResponse());
-        } catch (SoapFault) {
+        } catch (\Throwable) {
             return [];
         }
     }
@@ -155,23 +155,15 @@ class PdamSoapService
                 continue;
             }
 
-            if (config('app.debug')) {
-                $nodes = [];
-                foreach ($entry->childNodes as $i => $node) {
-                    $nodes[$i] = $node->nodeName.' = '.substr((string) $node->nodeValue, 0, 60);
-                }
-                Log::debug('CompliantLogViewModel child nodes', $nodes);
-            }
-
             $statusName = trim($this->getChildNodeValue($entry, 'CompliantStatusName'));
             $statusId = trim($this->getChildNodeValue($entry, 'CompliantStatusId'));
             $processedRaw = trim($this->getChildNodeValue($entry, 'ProcessedDate'));
 
             $results[] = [
-                'nama' => $this->getChildNodeValue($entry, 'CustomerCompliantName'),
-                'alamat' => $this->getChildNodeValue($entry, 'CustomerCompliantAddress'),
+                'nama' => $this->maskName($this->getChildNodeValue($entry, 'CustomerCompliantName')),
+                'alamat' => $this->maskAddress($this->getChildNodeValue($entry, 'CustomerCompliantAddress')),
                 'ticket' => $this->getChildNodeValue($entry, 'CustomerCompliantNumber'),
-                'no_pelanggan' => $this->getChildNodeValue($entry, 'CustomerCompliantNolangg'),
+                'no_pelanggan' => $this->maskCustomerNumber($this->getChildNodeValue($entry, 'CustomerCompliantNolangg')),
                 'pengaduan' => $this->getChildNodeValue($entry, 'CustomerCompliantContent'),
                 'status' => $this->resolveStatusLabel($statusName, $statusId),
                 'tanggal_masuk' => $this->getChildNodeValue($entry, 'InputedDate'),
@@ -208,10 +200,10 @@ class PdamSoapService
             }
 
             $results[] = [
-                'nama' => $this->getChildNodeValue($entry, 'ComplianerName'),
-                'alamat' => $this->getChildNodeValue($entry, 'ComplianerAddress'),
+                'nama' => $this->maskName($this->getChildNodeValue($entry, 'ComplianerName')),
+                'alamat' => $this->maskAddress($this->getChildNodeValue($entry, 'ComplianerAddress')),
                 'ticket' => $this->getChildNodeValue($entry, 'Number'),
-                'no_pelanggan' => $this->getChildNodeValue($entry, 'PDAMCustNumber'),
+                'no_pelanggan' => $this->maskCustomerNumber($this->getChildNodeValue($entry, 'PDAMCustNumber')),
                 'pengaduan' => $this->getChildNodeValue($entry, 'CompliantContent'),
                 'status' => $this->resolveStatusLabel($statusName, $statusId),
                 'tanggal_masuk' => $tanggalMasuk,
@@ -221,6 +213,63 @@ class PdamSoapService
         }
 
         return $results;
+    }
+
+    /** Samarkan nama pelapor untuk mencegah kebocoran PII melalui IDOR publik. */
+    private function maskName(string $name): string
+    {
+        $name = trim($name);
+        if ($name === '' || $name === '-') {
+            return '-';
+        }
+
+        $words = preg_split('/\s+/', $name) ?: [];
+        $maskedWords = [];
+
+        foreach ($words as $word) {
+            $len = mb_strlen($word);
+            if ($len <= 1) {
+                $maskedWords[] = $word.'*';
+            } elseif ($len === 2) {
+                $maskedWords[] = mb_substr($word, 0, 1).'*';
+            } else {
+                $maskedWords[] = mb_substr($word, 0, 1).str_repeat('*', $len - 1);
+            }
+        }
+
+        return implode(' ', $maskedWords);
+    }
+
+    /** Samarkan alamat pelapor untuk melindungi privasi. */
+    private function maskAddress(string $address): string
+    {
+        $address = trim($address);
+        if ($address === '' || $address === '-') {
+            return '-';
+        }
+
+        $len = mb_strlen($address);
+        if ($len <= 6) {
+            return mb_substr($address, 0, 2).str_repeat('*', max(1, $len - 2));
+        }
+
+        return mb_substr($address, 0, 4).str_repeat('*', max(3, $len - 8)).mb_substr($address, -4);
+    }
+
+    /** Samarkan nomor pelanggan. */
+    private function maskCustomerNumber(?string $num): string
+    {
+        $num = trim((string) $num);
+        if ($num === '' || $num === '-') {
+            return '-';
+        }
+
+        $len = strlen($num);
+        if ($len <= 3) {
+            return str_repeat('*', $len);
+        }
+
+        return substr($num, 0, 2).str_repeat('*', max(1, $len - 3)).substr($num, -1);
     }
 
     /** Normalisasi status SOAP ke label yang konsisten untuk UI. */
@@ -234,17 +283,31 @@ class PdamSoapService
             'inputed' => 'Dilaporkan',
             'received' => 'Diterima',
             'inprogress' => 'Dikerjakan',
+            'in progress' => 'Dikerjakan',
             'done' => 'Selesai',
             'completed' => 'Selesai',
+            'dilaporkan' => 'Dilaporkan',
+            'diterima' => 'Diterima',
+            'dikerjakan' => 'Dikerjakan',
+            'selesai' => 'Selesai',
         ];
 
-        if ($statusName !== '' && ! is_numeric($statusName)) {
+        $nameKey = strtolower(trim($statusName));
+        $idKey = trim($statusId);
+
+        if (isset($statusLabels[$nameKey])) {
+            return $statusLabels[$nameKey];
+        }
+
+        if (isset($statusLabels[$idKey])) {
+            return $statusLabels[$idKey];
+        }
+
+        if ($statusName !== '') {
             return $statusName;
         }
 
-        $key = strtolower($statusName);
-
-        return $statusLabels[$statusId] ?? $statusLabels[$key] ?? ($statusId !== '' ? "Status {$statusId}" : 'Status tidak diketahui');
+        return $statusId !== '' ? "Status {$statusId}" : 'Status tidak diketahui';
     }
 
     /** Ambil nilai node anak pertama berdasarkan nama tag XML. */

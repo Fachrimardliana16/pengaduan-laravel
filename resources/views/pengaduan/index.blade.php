@@ -640,6 +640,10 @@
         }
 
         marker.on('dragend', e => sync(e.target.getLatLng()));
+        map.on('click', e => {
+            marker.setLatLng(e.latlng);
+            sync(e.latlng);
+        });
 
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
