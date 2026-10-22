@@ -20,12 +20,14 @@ class WhatsAppService
 
             return;
         }
-
-        $message = "Terimakasih, {$name}. Pengaduan anda sudah kami terima dengan nomor pengaduan {$idPengaduan}. "
-            .'Untuk mengetahui progress pengaduan anda silahkan masukan nomor pengaduan pada menu cari pengaduan '
-            .'di website https://pengaduan.pdampurbalingga.co.id '
-            ."Terimakasih dan Mohon Maaf atas ketidaknyamanannya.\u{1F64F}";
-
+        
+        $message = "*Halo, {$name}.* \n\n"
+                    . "Terima kasih telah menyampaikan pengaduan kepada Perumda Air Minum Tirta Perwira.\n\n"
+                    . "Pengaduan Anda telah kami terima dengan nomor *{$idPengaduan}*.\n\n"
+                    . "Untuk memantau progres penanganan, silakan masukkan nomor pengaduan Anda pada menu *Cek Status* melalui tautan berikut :\n"
+                    . "https://pengaduan.pdampurbalingga.co.id\n\n"
+                    . "Terima kasih dan mohon maaf atas ketidaknyamanannya.";
+    
         $this->dispatch($normalizedPhone, $message, ['countryCode' => '62']);
     }
 
@@ -41,18 +43,19 @@ class WhatsAppService
             return;
         }
 
-        $message = "*Hallo semua para awak Tukang Ledeng*.\n"
-            ."Ada pengaduan baru dengan nomor pengaduan {$idPengaduan} dari {$data['Name']}. "
-            ."Mohon segera ditindaklanjuti.\n"
-            ."Update progress di https://e-office.pdampurbalingga.co.id/\n"
-            ."Monitoring Progress di https://pengaduan.pdampurbalingga.co.id/\n\n"
-            ."\u{1F4A7}PENGADUAN PELANGGAN\u{1F4A7}\n"
-            ."Nama           : {$data['Name']}\n"
-            .'No. Pelanggan  : '.($data['CustomerNumber'] ?? '-')."\n"
-            ."Alamat         : {$data['Address']}\n"
-            ."Nomor Telepon  : {$data['PhoneNumber']}\n"
-            ."Deskripsi      : {$data['CompliantContent']}\n\n"
-            ."Terimakasih atas kerjasamanya\u{1F64F}";
+        $message = "*NOTIFIKASI PENGADUAN BARU*\n\n"
+                    . "*DETAIL PENGADUAN*\n"
+                    . "Nomor Pengaduan : *{$idPengaduan}*\n"
+                    . "Nama : " . ($data['Name'] ?? '-') . "\n"
+                    . "No. Pelanggan : " . ($data['CustomerNumber'] ?? '-') . "\n"
+                    . "Alamat : " . ($data['Address'] ?? '-') . "\n"
+                    . "Telepon : " . ($data['PhoneNumber'] ?? '-') . "\n"
+                    . "Deskripsi Pengaduan : " . ($data['CompliantContent'] ?? '-') . "\n\n"
+                    . "*Update Penanganan :*\n"
+                    . "https://e-office.pdampurbalingga.co.id/\n\n"
+                    . "*Monitoring Pengaduan :*\n"
+                    . "https://pengaduan.pdampurbalingga.co.id/\n\n"
+                    . "Terima kasih atas kerjasamanya & Mohon Segera ditindaklanjuti";
 
         foreach ($groupTargets as $groupTarget) {
             $this->dispatch($groupTarget, $message, ['delay' => '6']);
